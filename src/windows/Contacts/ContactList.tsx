@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState } from "react";
-import { StyleSheet, StatusBar } from "react-native";
-import { Icon, Text, Header, Item } from "native-base";
+import { StyleSheet, StatusBar, View } from "react-native";
+import { Icon, Text, Header, Item, Button } from "native-base";
 import { StackNavigationProp } from "@react-navigation/stack";
 import Color from "color";
 
@@ -14,6 +14,7 @@ import usePromptLightningAddress from "../../hooks/usePromptLightningAddress";
 import { Alert } from "../../utils/alert";
 import { Chain } from "../../utils/build";
 import Contact from "./Contact";
+import { IContact } from "../../storage/database/contact";
 import Input from "../../components/Input";
 
 import { useTranslation } from "react-i18next";
@@ -31,6 +32,8 @@ export default function ContactList({ navigation }: IContactListProps) {
   const clearLnUrl = useStoreActions((store) => store.lnUrl.clear);
   const promptLightningAddress = usePromptLightningAddress();
   const getContactByLightningAddress = useStoreState((store) => store.contacts.getContactByLightningAddress);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<IContact[]>([]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -93,12 +96,24 @@ export default function ContactList({ navigation }: IContactListProps) {
       return 1;
     }
     return 0;
-  })
+  });
+
+  const onContactSelectionChange = (contact: IContact, selected: boolean) => {
+    if (selected) {
+      setSelectedContacts([...selectedContacts, contact]);
+    } else {
+      setSelectedContacts(selectedContacts.filter((c) => c.id !== contact.id));
+    }
+    console.log(selectedContacts);
+  };
 
   return (
     <Container>
       <Header iosBarStyle="light-content" searchBar rounded style={style.searchHeader}>
-        <Item rounded style={{ height: 35 }}>
+        <NavigationButton onPress={() => setIsEditing(!isEditing)}>
+          <Icon type="AntDesign" name="edit" style={{ fontSize: 22, marginTop: 16 }} />
+        </NavigationButton>
+        <Item rounded style={{ height: 35, marginLeft: 12 }}>
           <Input
             style={{ marginLeft: 8, marginTop: -2.5, borderRadius: 8, color: blixtTheme.dark }}
             placeholder={t("generic.search", { ns: namespaces.common })}
@@ -125,8 +140,21 @@ export default function ContactList({ navigation }: IContactListProps) {
             </Text>?
           </Text>
         }
+        {isEditing &&
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+              {selectedContacts.length} {t("layout.selected")}
+            </Text>
+            <Button onPress={() => {}} small style={{marginLeft: "auto", marginRight: 5}} disabled={!selectedContacts.length}>
+              <Text>{t("contact.send.title")}</Text>
+            </Button>
+            <Button onPress={() => {}} small icon danger disabled={!selectedContacts.length}>
+              <Icon type="AntDesign" name="delete" style={[{fontSize: 10, margin: 0, padding: 0 }]}/>
+            </Button>
+          </View>
+        }
         {sortedContacts.map((contact) => (
-          <Contact key={contact.id} contact={contact} />
+          <Contact key={contact.id} contact={contact} selectable={isEditing} onSelectedChange={onContactSelectionChange} />
         ))}
       </Content>
     </Container>

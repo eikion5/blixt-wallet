@@ -498,7 +498,8 @@
       "lightningAddressAlreadyExists": "already exists in your contact list",
       "nothingHereYet": "There's nothing here yet...",
       "whyNotAdd": "Why not add a Lightning Address contact by",
-      "tappingHere": "tapping here"
+      "tappingHere": "tapping here",
+      "selected": "selected"
     },
     "contact": {
       "syncBalance": {

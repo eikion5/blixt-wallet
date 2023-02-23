@@ -8,8 +8,8 @@ export default function usePromptLightningAddress() {
 
   return () => new Promise<[boolean, string?]>((resolve, reject) => {
     Alert.prompt(
-      "Lightning Address",
-      "Enter Lightning Address\n(user@domain.com)",
+      "Lightning Address", // TODO: translate
+      "Enter Lightning Address\n(user@domain.com)\n\nOr multiple addresses separated by commas\n(alice@domain.com,bob@domain.com)",
       [{
         text: "Cancel",
         style: "cancel",

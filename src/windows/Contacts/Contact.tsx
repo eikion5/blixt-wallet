@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { StyleSheet, View, LayoutAnimation, Pressable, EmitterSubscription } from "react-native";
 import { Icon, Card, CardItem, Text, Button } from "native-base";
 import { useNavigation } from "@react-navigation/core";
+import CheckBox from '@react-native-community/checkbox';
 import Long from "long";
 import Color from "color";
 
@@ -26,8 +27,10 @@ import { blixtTheme } from "../../native-base-theme/variables/commonColor";
 
 interface IContactProps {
   contact: IContact;
+  selectable?: boolean;
+  onSelectedChange?: (contact: IContact, selected: boolean) => void;
 }
-export default function Contact({ contact }: IContactProps) {
+export default function Contact({ contact, selectable, onSelectedChange }: IContactProps) {
   const t = useTranslation(namespaces.contacts.contactList).t;
   const navigation = useNavigation();
   const setLNUrl = useStoreActions((store) => store.lnUrl.setLNUrl);
@@ -43,6 +46,7 @@ export default function Contact({ contact }: IContactProps) {
   const [loadingWithdraw, setLoadingWithdraw] = useState(false);
   const [sendButtonWidth, setSendButtonWidth] = useState<number | undefined>();
   const [widthdrawButtonWidth, setWithdrawButtonWidth] = useState<number | undefined>();
+  const [selected, setSelected] = useState(false);
 
   useEffect(() => {
     let listener: EmitterSubscription | null = null;
@@ -199,90 +203,105 @@ export default function Contact({ contact }: IContactProps) {
     );
   };
 
+  const onSelectValueChange = (value: boolean) => {
+    onSelectedChange!(contact, value);
+    setSelected(value);
+  };
+
   return (
     <>
-      <Card style={style.card}>
-        <CardItem style={style.cardItem} activeOpacity={1} button>
-          <Pressable style={style.cardPressable} onPress={toggle}>
-            <View style={style.cardSimple}>
-              <Icon style={style.cardIcon} type="MaterialCommunityIcons" name={contact.type === "SERVICE" ? "web" : "at"} />
-              <Text style={style.cardTitle} numberOfLines={1} lineBreakMode="middle">
-                {contact.type === "SERVICE" && (
+      <View style={style.cardSimple}>
+        {selectable && (
+          <CheckBox
+            disabled={false}
+            style={{marginRight: 5}}
+            value={selected}
+            onValueChange={onSelectValueChange}
+          />
+        )}
+        <Card style={style.card}>
+          <CardItem style={style.cardItem} activeOpacity={1} button>
+            <Pressable style={style.cardPressable} onPress={toggle}>
+              <View style={style.cardSimple}>
+                <Icon style={style.cardIcon} type="MaterialCommunityIcons" name={contact.type === "SERVICE" ? "web" : "at"} />
+                <Text style={style.cardTitle} numberOfLines={1} lineBreakMode="middle">
+                  {contact.type === "SERVICE" && (
+                    <>
+                      {contact.lnUrlPay && !contact.lnUrlWithdraw &&
+                        <>{t("contact.list.pay")} <TextLink url={`https://${contact.domain}`}>{contact.domain}</TextLink></>
+                      }
+                      {!contact.lnUrlPay && contact.lnUrlWithdraw &&
+                        <>{t("contact.list.account")} <TextLink url={`https://${contact.domain}`}>{contact.domain}</TextLink></>
+                      }
+                      {contact.lnUrlPay && contact.lnUrlWithdraw &&
+                        <>{t("contact.list.account")} <TextLink url={`https://${contact.domain}`}>{contact.domain}</TextLink></>
+                      }
+                    </>
+                  )}
+                  {contact.type === "PERSON" &&
+                    <>{contact.lightningAddress}</>
+                  }
+                </Text>
+                <View style={style.expandContainer}>
+                  <Icon type="AntDesign" name={expand ? "minus" : "plus"}/>
+                </View>
+              </View>
+            </Pressable>
+            <View style={[{ height: expand ? "auto" : 0 }, style.cardExpansionContainer]}>
+              <View style={style.cardExpansion}>
+                <View style={style.cardExpansionInfo}>
+                  {contact.note.length > 0 && <Text>{contact.note}</Text>}
+                  {contact.lnUrlWithdraw &&
+                    <Text>
+                      {t("contact.syncBalance.title")}:{" "}
+                      {currentBalance && (
+                        <>
+                          {formatBitcoin(Long.fromValue(currentBalance).div(1000), bitcoinUnit)}{" "}
+                          ({valueFiat(Long.fromValue(currentBalance).div(1000), fiatRate).toFixed(2) + " " + fiatUnit})
+                        </>
+                      )}
+                      {currentBalance === undefined && <>...</>}
+                    </Text>
+                  }
+                </View>
+                <View style={style.actionButtons}>
+                  {(contact.lnUrlWithdraw && currentBalance! > 0) &&
+                    <Button onPress={onPressWithdraw} style={[style.actionButton, { width: widthdrawButtonWidth }]} small disabled={loadingWithdraw} onLayout={(event) => {
+                      if (!sendButtonWidth) {
+                        setWithdrawButtonWidth(event.nativeEvent.layout.width);
+                      }
+                    }}>
+                      {!loadingWithdraw && <Text style={style.actionButtonText}>{t("contact.withdraw.title")}</Text>}
+                      {loadingWithdraw && <ButtonSpinner />}
+                    </Button>
+                  }
+                  {(contact.lnUrlPay || contact.lightningAddress) &&
                   <>
-                    {contact.lnUrlPay && !contact.lnUrlWithdraw &&
-                      <>{t("contact.list.pay")} <TextLink url={`https://${contact.domain}`}>{contact.domain}</TextLink></>
-                    }
-                    {!contact.lnUrlPay && contact.lnUrlWithdraw &&
-                      <>{t("contact.list.account")} <TextLink url={`https://${contact.domain}`}>{contact.domain}</TextLink></>
-                    }
-                    {contact.lnUrlPay && contact.lnUrlWithdraw &&
-                      <>{t("contact.list.account")} <TextLink url={`https://${contact.domain}`}>{contact.domain}</TextLink></>
-                    }
+                    <Button onPress={onPressSend} style={[style.actionButton, { width: sendButtonWidth }]} small disabled={loadingPay} onLayout={(event) => {
+                      if (!sendButtonWidth) {
+                        setSendButtonWidth(event.nativeEvent.layout.width);
+                      }
+                    }}>
+                      {!loadingPay && <Text style={style.actionButtonText}>{t("contact.send.title")}</Text>}
+                      {loadingPay && <ButtonSpinner />}
+                    </Button>
                   </>
-                )}
-                {contact.type === "PERSON" &&
-                  <>{contact.lightningAddress}</>
-                }
-              </Text>
-              <View style={style.expandContainer}>
-                <Icon type="AntDesign" name={expand ? "minus" : "plus"}/>
-              </View>
-            </View>
-          </Pressable>
-          <View style={[{ height: expand ? "auto" : 0 }, style.cardExpansionContainer]}>
-            <View style={style.cardExpansion}>
-              <View style={style.cardExpansionInfo}>
-                {contact.note.length > 0 && <Text>{contact.note}</Text>}
-                {contact.lnUrlWithdraw &&
-                  <Text>
-                    {t("contact.syncBalance.title")}:{" "}
-                    {currentBalance && (
-                      <>
-                        {formatBitcoin(Long.fromValue(currentBalance).div(1000), bitcoinUnit)}{" "}
-                        ({valueFiat(Long.fromValue(currentBalance).div(1000), fiatRate).toFixed(2) + " " + fiatUnit})
-                      </>
-                    )}
-                    {currentBalance === undefined && <>...</>}
-                  </Text>
-                }
-              </View>
-              <View style={style.actionButtons}>
-                {(contact.lnUrlWithdraw && currentBalance! > 0) &&
-                  <Button onPress={onPressWithdraw} style={[style.actionButton, { width: widthdrawButtonWidth }]} small disabled={loadingWithdraw} onLayout={(event) => {
-                    if (!sendButtonWidth) {
-                      setWithdrawButtonWidth(event.nativeEvent.layout.width);
-                    }
-                  }}>
-                    {!loadingWithdraw && <Text style={style.actionButtonText}>{t("contact.withdraw.title")}</Text>}
-                    {loadingWithdraw && <ButtonSpinner />}
-                  </Button>
-                }
-                {(contact.lnUrlPay || contact.lightningAddress) &&
-                <>
-                  <Button onPress={onPressSend} style={[style.actionButton, { width: sendButtonWidth }]} small disabled={loadingPay} onLayout={(event) => {
-                    if (!sendButtonWidth) {
-                      setSendButtonWidth(event.nativeEvent.layout.width);
-                    }
-                  }}>
-                    {!loadingPay && <Text style={style.actionButtonText}>{t("contact.send.title")}</Text>}
-                    {loadingPay && <ButtonSpinner />}
-                  </Button>
-                </>
-                }
+                  }
 
-                <View style={style.actionButtonsAdmin}>
-                  <Button onPress={promptDeleteContact} small style={[style.actionButton]} icon danger>
-                    <Icon type="AntDesign" name="delete" style={[style.actionButton, {fontSize: 10, margin: 0, padding: 0 }]}/>
-                  </Button>
-                  {/* <Button small style={[style.actionButton, {  }]} icon warning>
-                    <Icon type="AntDesign" name="edit" style={[style.actionButton, {fontSize: 14 }]} />
-                  </Button> */}
+                  <View style={style.actionButtonsAdmin}>
+                    <Button onPress={promptDeleteContact} small style={[style.actionButton]} icon danger>
+                      <Icon type="AntDesign" name="delete" style={[style.actionButton, {fontSize: 10, margin: 0, padding: 0 }]}/>
+                    </Button>
+                    {/* <Button small style={[style.actionButton, {  }]} icon warning>
+                      <Icon type="AntDesign" name="edit" style={[style.actionButton, {fontSize: 14 }]} />
+                    </Button> */}
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        </CardItem>
-      </Card>
+          </CardItem>
+        </Card>
+      </View>
     </>
   );
 }
@@ -301,6 +320,7 @@ const style = StyleSheet.create({
     elevation: 0,
   },
   card: {
+    flex: 1,
   },
   cardItem: {
     flexDirection: "column",
