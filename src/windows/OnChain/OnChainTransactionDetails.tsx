@@ -3,7 +3,7 @@ import { StyleSheet, Linking, View } from "react-native";
 import Clipboard from "@react-native-community/clipboard";
 import { Body, Card, Text, CardItem, H1, Button } from "native-base";
 import { fromUnixTime } from "date-fns";
-import { RouteProp } from "@react-navigation/native";
+import { RouteProp, useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
 import { OnChainStackParamList } from "./index";
@@ -47,13 +47,17 @@ export default function OnChainTransactionDetails({ navigation, route }: ITransa
   const transaction = useStoreState((store) => store.onChain.getOnChainTransactionByTxId(txId));
   const bitcoinUnit = useStoreState((store) => store.settings.bitcoinUnit);
   const onchainExplorer =  useStoreState((store) => store.settings.onchainExplorer);
+  const globalNavigator = useNavigation();
 
   if (!transaction) {
     return (<></>);
   }
 
-  const onPressBlockExplorer = async () => {
-    await Linking.openURL(constructOnchainExplorerUrl(onchainExplorer, txId));
+  const onPressBlockExplorer = () => {
+    navigation.goBack();
+    globalNavigator.navigate("WebLNBrowser", {
+      url: constructOnchainExplorerUrl(onchainExplorer, transaction.txHash!)
+    });
   }
 
   return (

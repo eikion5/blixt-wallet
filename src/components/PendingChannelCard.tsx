@@ -1,6 +1,6 @@
 import React from "react";
 import { Body, Text, Left, Right, Card, CardItem, Row, Button } from "native-base";
-import { Image, Linking } from "react-native";
+import { Image } from "react-native";
 import Long from "long";
 import BigNumber from "bignumber.js";
 
@@ -16,6 +16,7 @@ import { getUnitNice, valueBitcoin, valueFiat } from "../utils/bitcoin-units";
 import { useTranslation } from "react-i18next";
 import { namespaces } from "../i18n/i18n.constants";
 import { Alert } from "../utils/alert";
+import { useNavigation } from "@react-navigation/native";
 
 const dataLossChannelState = 'ChanStatusLocalDataLoss|ChanStatusRestored';
 
@@ -37,6 +38,7 @@ export const PendingChannelCard = ({ channel, type, alias }: IPendingChannelCard
   const bitcoinUnit = useStoreState((store) => store.settings.bitcoinUnit);
   const fiatUnit = useStoreState((store) => store.settings.fiatUnit);
   const currentRate = useStoreState((store) => store.fiat.currentRate);
+  const navigation = useNavigation();
 
   if (!channel.channel) {
     return (<Text>Error</Text>);
@@ -98,8 +100,10 @@ export const PendingChannelCard = ({ channel, type, alias }: IPendingChannelCard
     await getChannels(undefined);
   };
 
-  const onPressViewInExplorer = async (txId: string) => {
-    await Linking.openURL(constructOnchainExplorerUrl(onchainExplorer, txId ?? ""));
+  const onPressViewInExplorer = (txId: string) => {
+    navigation.navigate("WebLNBrowser", {
+      url: constructOnchainExplorerUrl(onchainExplorer, txId ?? "")
+    });
   }
 
   const serviceKey = identifyService(channel.channel.remoteNodePub ?? "", "", null);

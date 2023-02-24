@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Alert, Image, Linking } from "react-native";
+import { StyleSheet, Alert, Image } from "react-native";
 import { Button, Card, CardItem, Body, Row, Right, Text, Left } from "native-base";
 import { Svg, Line } from "react-native-svg";
 import Long from "long";
@@ -15,6 +15,7 @@ import { constructOnchainExplorerUrl } from "../utils/onchain-explorer";
 
 import { useTranslation } from "react-i18next";
 import { namespaces } from "../i18n/i18n.constants";
+import { useNavigation } from "@react-navigation/native";
 
 const blixtTheme = nativeBaseTheme.blixtTheme;
 
@@ -34,6 +35,7 @@ export function ChannelCard({ channel, alias }: IChannelCardProps) {
   const currentRate = useStoreState((store) => store.fiat.currentRate);
   const preferFiat = useStoreState((store) => store.settings.preferFiat);
   const onchainExplorer = useStoreState((store) => store.settings.onchainExplorer);
+  const navigation = useNavigation();
 
   const close = (force: boolean = false) => {
     Alert.alert(
@@ -76,9 +78,11 @@ export function ChannelCard({ channel, alias }: IChannelCardProps) {
     );
   };
 
-  const onPressViewInExplorer = async () => {
+  const onPressViewInExplorer = () => {
     const txId = channel.channelPoint?.split(":")[0];
-    await Linking.openURL(constructOnchainExplorerUrl(onchainExplorer, txId ?? ""));
+    navigation.navigate("WebLNBrowser", {
+      url: constructOnchainExplorerUrl(onchainExplorer, txId ?? "") 
+    });
   }
 
   let localBalance = channel.localBalance || Long.fromValue(0);
