@@ -29,11 +29,14 @@ export default function ContactList({ navigation }: IContactListProps) {
   const contacts = useStoreState((store) => store.contacts.contacts);
   const getContacts = useStoreActions((store) => store.contacts.getContacts);
   const syncContact = useStoreActions((store) => store.contacts.syncContact);
+  const deleteContact = useStoreActions((store) => store.contacts.deleteContact);
   const clearLnUrl = useStoreActions((store) => store.lnUrl.clear);
   const promptLightningAddress = usePromptLightningAddress();
   const getContactByLightningAddress = useStoreState((store) => store.contacts.getContactByLightningAddress);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<IContact[]>([]);
+  const resolveLightningAddress = useStoreActions((store) => store.lnUrl.resolveLightningAddress);
+  const resolveMultiLightningAddress = useStoreActions((store) => store.lnUrl.resolveMultiLightningAddress);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -52,25 +55,36 @@ export default function ContactList({ navigation }: IContactListProps) {
   }, [navigation]);
 
   const addLightningAddress = async () => {
-    const [result, lightningAddress] = await promptLightningAddress();
-    if (result && lightningAddress) {
-      if (getContactByLightningAddress(lightningAddress)) {
-        Alert.alert("", `${lightningAddress} ${t("lightningAddressAlreadyExists")}.`);
-        return;
+    const promptRes = await promptLightningAddress();
+    if (promptRes[0] && promptRes[1] && promptRes.length === 3) { // multiple addresses
+      let addresses = promptRes[1].split(",").map((a) => a.trim());
+      addresses = addresses.filter((a) => !getContactByLightningAddress(a))
+      await Promise.all(addresses.map((a) => addContactByLightningAddress(a)));
+    } else { // single address
+      const [result, lightningAddress] = promptRes;
+      if (result && lightningAddress) {
+        if (getContactByLightningAddress(lightningAddress)) {
+          Alert.alert("", `${lightningAddress} ${t("lightningAddressAlreadyExists")}.`);
+          return;
+        }
+        await addContactByLightningAddress(lightningAddress);
       }
-
-      const domain = lightningAddress.split("@")[1] ?? "";
-      await syncContact({
-        type: "PERSON",
-        domain,
-        lnUrlPay: null,
-        lnUrlWithdraw: null,
-        lightningAddress: lightningAddress!,
-        lud16IdentifierMimeType: "text/identifier",
-        note: "",
-      });
     }
+
     clearLnUrl();
+  };
+
+  const addContactByLightningAddress = async (lightningAddress: string) => {
+    const domain = lightningAddress.split("@")[1] ?? "";
+    await syncContact({
+      type: "PERSON",
+      domain,
+      lnUrlPay: null,
+      lnUrlWithdraw: null,
+      lightningAddress: lightningAddress!,
+      lud16IdentifierMimeType: "text/identifier",
+      note: "",
+    });
   };
 
   const filteredContacts = contacts.filter((contact) => {
@@ -104,7 +118,47 @@ export default function ContactList({ navigation }: IContactListProps) {
     } else {
       setSelectedContacts(selectedContacts.filter((c) => c.id !== contact.id));
     }
-    console.log(selectedContacts);
+  };
+
+  const onBulkDeletePress = () => {
+    Alert.alert(
+      t("contact.deleteContact.title"),
+      t("contact.deleteContact.msgMulti"),
+      [
+        {
+          text: t("buttons.no",{ns:namespaces.common}),
+        },
+        {
+          text: t("buttons.yes",{ns:namespaces.common}),
+          onPress: async () => {
+            for (const contact of selectedContacts) {
+              await deleteContact(contact.id!);
+            }
+            setSelectedContacts([]);
+            setIsEditing(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const onBulkSendPress = async () => {
+    if (selectedContacts.length === 0) {
+      return;
+    }
+
+    const multi = selectedContacts.length > 1;
+
+    if (multi) {
+      const multiAddresses = selectedContacts.map(c => c.lightningAddress);
+      if (await resolveMultiLightningAddress(multiAddresses as string[])) {
+        navigation.navigate("LNURL", { screen: "PayRequestMulti" });
+      }
+    } else {
+      if (await resolveLightningAddress(selectedContacts[0].lightningAddress!)) {
+        navigation.navigate("LNURL", { screen: "PayRequest" });
+      }
+    }
   };
 
   return (
@@ -145,10 +199,10 @@ export default function ContactList({ navigation }: IContactListProps) {
             <Text style={{ fontSize: 16, fontWeight: "bold" }}>
               {selectedContacts.length} {t("layout.selected")}
             </Text>
-            <Button onPress={() => {}} small style={{marginLeft: "auto", marginRight: 5}} disabled={!selectedContacts.length}>
+            <Button onPress={onBulkSendPress} small style={{marginLeft: "auto", marginRight: 5}} disabled={!selectedContacts.length}>
               <Text>{t("contact.send.title")}</Text>
             </Button>
-            <Button onPress={() => {}} small icon danger disabled={!selectedContacts.length}>
+            <Button onPress={onBulkDeletePress} small icon danger disabled={!selectedContacts.length}>
               <Icon type="AntDesign" name="delete" style={[{fontSize: 10, margin: 0, padding: 0 }]}/>
             </Button>
           </View>

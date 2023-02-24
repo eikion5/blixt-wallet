@@ -426,9 +426,11 @@
       "title": "Cancel"
     },
     "form": {
+      "multipleRecipients": "Multiple recipients",
       "asksYouToPay": "asks you to pay.",
       "description": {
-        "title": "Description"
+        "title": "Description",
+        "textMultiple": "You are about to pay to {{count}} recipients."
       },
       "amount": {
         "title": "Amount",
@@ -524,7 +526,8 @@
       },
       "deleteContact": {
         "title": "Contact deletion",
-        "msg": "Are you sure you want to delete contact {{contact}}?"
+        "msg": "Are you sure you want to delete contact {{contact}}?",
+        "msgMulti": "Delete multiple contacts?"
       }
     }
   },

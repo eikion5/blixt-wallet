@@ -43,8 +43,10 @@ export default function Drawer() {
     if (PLATFORM !== "macos") {
       navigation.dispatch(DrawerActions.closeDrawer);
     }
-    if ((await promptLightningAddress())[0]) {
-      navigation.navigate("LNURL", { screen: "PayRequest" });
+    const promptRes = await promptLightningAddress();
+    if ((promptRes)[0]) {
+      if (promptRes.length === 3) navigation.navigate("LNURL", { screen: "PayRequestMulti" })
+      else navigation.navigate("LNURL", { screen: "PayRequest" });
     } else {
       if (PLATFORM !== "macos") {
         navigation.dispatch(DrawerActions.openDrawer);
